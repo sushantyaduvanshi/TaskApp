@@ -1,0 +1,260 @@
+openapi: '3.0.3'
+info:
+  title: Task App
+  version: '1.0'
+servers:
+  - url: https://api.server.test/v1
+
+components:
+
+  schemas:
+    message_object:
+      type: object
+      properties:
+        message:
+          type: string
+    error_object:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+    unauthorise_error_object:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          default: "You're unauthorised to perform this action."
+    server_error_object:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          default: "Something went wrong. Please try again."
+    task_list_object:
+      type: object
+      required:
+        - title
+      properties:
+        id:
+          type: integer
+          minimum: 1
+          readOnly: true
+        title:
+          type: string
+        description:
+          type: string
+          default: ""
+          maxLength: 50
+    task_object:
+      allOf:
+        - $ref: "#/components/schemas/task_list_object"
+        - type: object
+          properties:
+            group:
+              $ref: "#/components/schemas/group_object"
+    group_object:
+      oneOf:
+        - type: object
+          properties:
+            id:
+              type: integer
+              minLength: 1
+            name:
+              type: string
+        - type: 'null'
+    login_schema:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+          x-42c-sensitivity-data: 3
+    
+  responses:
+    error:
+      description: 'Invalid input.'
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/error_object"
+    unauthourized_error:
+      description: 'Error reponse.'
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/unauthorise_error_object"
+    server_error:
+      description: 'Error reponse.'
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/server_error_object"
+    task_list:
+      description: 'Success reponse of task list api.'
+      content:
+        application/json:
+          schema: {
+            type: "array",
+            items: {
+              $ref: "#/components/schemas/task_list_object"
+            }
+          }
+    task:
+      description: 'Success reponse of task crud api.'
+      content:
+        application/json:
+          schema:
+            allOf:
+              - type: object
+                properties:
+                  task:
+                    $ref: "#/components/schemas/task_object"
+              - $ref: "#/components/schemas/message_object"
+    
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  /tasks:
+    get:
+      responses:
+        '200':
+          $ref: "#/components/responses/task_list"
+        '400':
+          $ref: "#/components/responses/error"
+        '401':
+          $ref: "#/components/responses/unauthourized_error"
+        '500':
+          $ref: "#/components/responses/server_error"
+          
+  /task:
+    get:
+      description: 'To get detailed information of request task.'
+      parameters:
+        - in : path
+          name: taskId
+          schema:
+            type: integer
+          required: true
+          description: Number ID of task to get details
+      responses:
+        '200':
+          $ref: "#/components/responses/task"
+        '400':
+          $ref: "#/components/responses/error"
+        '401':
+          $ref: "#/components/responses/unauthourized_error"
+        '500':
+          $ref: "#/components/responses/server_error"
+    post:
+      description: 'To create a new task.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/task_object"
+      responses:
+        '200':
+          $ref: "#/components/responses/task"
+        '400':
+          $ref: "#/components/responses/error"
+        '401':
+          $ref: "#/components/responses/unauthourized_error"
+        '500':
+          $ref: "#/components/responses/server_error"
+    put:
+      description: 'To edit a task.'
+      parameters:
+        - in : path
+          name: taskId
+          schema:
+            type: integer
+          required: true
+          description: Number ID of task to get details
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/task_object"
+      responses:
+        '200':
+          $ref: "#/components/responses/task"
+        '400':
+          $ref: "#/components/responses/error"
+        '401':
+          $ref: "#/components/responses/unauthourized_error"
+        '500':
+          $ref: "#/components/responses/server_error"
+    delete:
+      description: 'To delete the requested task.'
+      parameters:
+        - in : path
+          name: taskId
+          schema:
+            type: integer
+          required: true
+          description: Number ID of task to get details
+      responses:
+        '200':
+          $ref: "#/components/responses/task"
+        '400':
+          $ref: "#/components/responses/error"
+        '401':
+          $ref: "#/components/responses/unauthourized_error"
+        '500':
+          $ref: "#/components/responses/server_error"
+
+  /login:
+    post:
+      description: 'User login.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/login_schema"
+      responses:
+        '200':
+          description: "Ok"
+        '401':
+          description: "Invalid credentials."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    default: "Entered email or password is incorrect."
+        '500':
+          $ref: "#/components/responses/server_error"
+
+  /signup:
+    post:
+      description: 'User Sign-Up.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/login_schema"
+      responses:
+        '200':
+          description: "Ok"
+        '400':
+          $ref: "#/components/responses/error"
+        '500':
+          $ref: "#/components/responses/server_error"
